@@ -59,7 +59,8 @@ function HomePage() {
       setDownloadedBibles(downloaded);
       
       // Get random versions from popular languages
-      const languages = ['vie', 'eng', 'kor', 'cmn'];
+      // vie = Vietnamese, eng = English, kor = Korean, zho = Chinese
+      const languages = ['vie', 'eng', 'kor', 'zho'];
       const allVersions = [];
       
       for (const lang of languages) {

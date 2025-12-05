@@ -201,9 +201,15 @@ ipcMain.handle('save-bible-local', async (event, bibleData) => {
   }
 });
 
-// Get/Set token
-ipcMain.handle('get-token', () => {
-  return store.get('token', 'fxAgRC8gE-rJH0I7i37xV');
+// Get/Set token - now fetches automatically from Bible.com
+ipcMain.handle('get-token', async () => {
+  try {
+    const token = await bibleApi.fetchBuildToken();
+    return token;
+  } catch (error) {
+    console.error('Error fetching token:', error);
+    return store.get('token', 'fxAgRC8gE-rJH0I7i37xV');
+  }
 });
 
 ipcMain.handle('set-token', (event, token) => {

@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Button,
   Spinner,
-  Dropdown,
+  Combobox,
   Option,
   Input,
   Dialog,
@@ -29,6 +29,7 @@ function DownloadPage() {
   const [loading, setLoading] = useState(true);
   const [languages, setLanguages] = useState([]);
   const [selectedLanguage, setSelectedLanguage] = useState('');
+  const [languageSearchQuery, setLanguageSearchQuery] = useState('');
   const [versions, setVersions] = useState([]);
   const [filteredVersions, setFilteredVersions] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -189,19 +190,36 @@ function DownloadPage() {
           <div className="filters-container">
             <div className="filter-group">
               <label className="filter-label">Ngôn ngữ</label>
-              <Dropdown
-                placeholder="Chọn ngôn ngữ"
-                value={selectedLanguage}
-                selectedOptions={[selectedLanguage]}
-                onOptionSelect={(e, data) => setSelectedLanguage(data.optionValue)}
-                style={{ minWidth: 250 }}
+              <Combobox
+                placeholder="Tìm kiếm ngôn ngữ..."
+                value={languageSearchQuery}
+                selectedOptions={selectedLanguage ? [selectedLanguage] : []}
+                onOptionSelect={(e, data) => {
+                  setSelectedLanguage(data.optionValue);
+                  const lang = languages.find(l => l.language_tag === data.optionValue);
+                  if (lang) {
+                    setLanguageSearchQuery(`${lang.local_name} (${lang.name})`);
+                  }
+                }}
+                onChange={(e) => setLanguageSearchQuery(e.target.value)}
+                freeform
+                style={{ minWidth: 300 }}
               >
-                {languages.map((lang) => (
-                  <Option key={lang.language_tag} value={lang.language_tag}>
-                    {lang.local_name} ({lang.name})
-                  </Option>
-                ))}
-              </Dropdown>
+                {languages
+                  .filter(lang => {
+                    if (!languageSearchQuery) return true;
+                    const query = languageSearchQuery.toLowerCase();
+                    return lang.local_name?.toLowerCase().includes(query) ||
+                           lang.name?.toLowerCase().includes(query) ||
+                           lang.language_tag?.toLowerCase().includes(query);
+                  })
+                  .slice(0, 50) // Limit to 50 results for performance
+                  .map((lang) => (
+                    <Option key={lang.language_tag} value={lang.language_tag} text={`${lang.local_name} (${lang.name})`}>
+                      {lang.local_name} ({lang.name})
+                    </Option>
+                  ))}
+              </Combobox>
             </div>
             
             <div className="filter-group" style={{ flex: 1 }}>
