@@ -1,4 +1,4 @@
-const axios = require('axios');
+const https = require('https');
 const cheerio = require('cheerio');
 const he = require('he');
 
@@ -8,10 +8,32 @@ class BibleApiService {
     this.nextDataUrl = 'https://www.bible.com/_next/data';
   }
 
+  // Helper method to make HTTPS GET requests
+  httpGet(url) {
+    return new Promise((resolve, reject) => {
+      https.get(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'application/json',
+        }
+      }, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          try {
+            resolve(JSON.parse(data));
+          } catch (e) {
+            reject(new Error('Failed to parse JSON response'));
+          }
+        });
+      }).on('error', reject);
+    });
+  }
+
   async getLanguages() {
     try {
-      const response = await axios.get(`${this.baseUrl}/configuration`);
-      const data = response.data.response?.data;
+      const response = await this.httpGet(`${this.baseUrl}/configuration`);
+      const data = response.response?.data;
       
       if (data && data.default_versions) {
         // Extract unique languages from default_versions
@@ -37,14 +59,10 @@ class BibleApiService {
 
   async getVersionsByLanguage(languageTag) {
     try {
-      const response = await axios.get(`${this.baseUrl}/versions`, {
-        params: {
-          language_tag: languageTag,
-          type: 'all',
-        },
-      });
+      const url = `${this.baseUrl}/versions?language_tag=${encodeURIComponent(languageTag)}&type=all`;
+      const response = await this.httpGet(url);
       
-      const versions = response.data.response?.data?.versions || [];
+      const versions = response.response?.data?.versions || [];
       return versions;
     } catch (error) {
       console.error('Error fetching versions:', error);
@@ -54,8 +72,8 @@ class BibleApiService {
 
   async getBooksByVersion(versionId) {
     try {
-      const response = await axios.get(`${this.baseUrl}/version/${versionId}`);
-      const data = response.data.response?.data;
+      const response = await this.httpGet(`${this.baseUrl}/version/${versionId}`);
+      const data = response.response?.data;
       
       if (data) {
         return {
@@ -81,16 +99,11 @@ class BibleApiService {
 
   async getChapterContent(versionId, usfm, abbreviation, token) {
     try {
-      const url = `${this.nextDataUrl}/${token}/en/bible/${versionId}/${usfm}.${abbreviation}.json`;
+      const url = `${this.nextDataUrl}/${token}/en/bible/${versionId}/${usfm}.${abbreviation}.json?versionId=${versionId}&usfm=${encodeURIComponent(`${usfm}.${abbreviation}`)}`;
       
-      const response = await axios.get(url, {
-        params: {
-          versionId: versionId,
-          usfm: `${usfm}.${abbreviation}`,
-        },
-      });
+      const response = await this.httpGet(url);
       
-      const pageProps = response.data.pageProps;
+      const pageProps = response.pageProps;
       
       if (pageProps && pageProps.chapterInfo) {
         const content = pageProps.chapterInfo.content;
