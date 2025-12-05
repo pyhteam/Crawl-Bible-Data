@@ -233,10 +233,11 @@ class BibleApiService {
     return verses;
   }
 
-  async downloadFullBible(versionId, versionInfo, token, onProgress) {
+  async downloadFullBible(versionId, versionInfo, token, onProgress, concurrency = 5) {
     console.log('Starting download for version:', versionId);
     console.log('Version info:', JSON.stringify(versionInfo, null, 2));
     console.log('Token:', token);
+    console.log('Concurrency:', concurrency);
     
     const { books } = await this.getBooksByVersion(versionId);
     console.log('Got books:', books.length);
@@ -252,66 +253,109 @@ class BibleApiService {
       books: [],
     };
     
-    let totalChapters = 0;
-    books.forEach(book => {
-      totalChapters += book.chapters?.length || 0;
-    });
+    // Build flat list of all chapters to download
+    const allChapters = [];
+    for (const book of books) {
+      for (const chapter of (book.chapters || [])) {
+        allChapters.push({
+          book,
+          chapter,
+        });
+      }
+    }
     
+    const totalChapters = allChapters.length;
     let processedChapters = 0;
     const abbr = versionInfo.abbreviation || versionInfo.local_abbreviation;
     console.log('Using abbreviation:', abbr);
+    console.log('Total chapters to download:', totalChapters);
     
+    // Results map: bookUsfm -> { bookData, chapters: Map<chapterUsfm, chapterData> }
+    const resultsMap = new Map();
     for (const book of books) {
-      const bookData = {
-        id: book.usfm,
-        name: book.human,
-        local_name: book.human_long,
-        chapters: [],
-      };
-      
-      for (const chapter of (book.chapters || [])) {
-        try {
-          console.log(`Downloading ${chapter.usfm}...`);
-          const chapterContent = await this.getChapterContent(
-            versionId,
-            chapter.usfm,
-            abbr,
-            token
-          );
-          
-          if (chapterContent) {
-            console.log(`  Got ${chapterContent.verses.length} verses`);
-            bookData.chapters.push({
-              id: chapter.usfm,
-              chapter: parseInt(chapter.human),
-              verses: chapterContent.verses,
-            });
-          } else {
-            console.log(`  No content returned`);
-          }
-          
-          processedChapters++;
-          
-          if (onProgress) {
-            onProgress({
-              current: processedChapters,
-              total: totalChapters,
-              book: book.human,
-              chapter: chapter.human,
-              percentage: Math.round((processedChapters / totalChapters) * 100),
-            });
-          }
-          
-          // Rate limiting - wait 100ms between requests
-          await this.delay(100);
-          
-        } catch (error) {
-          console.error(`Error downloading ${chapter.usfm}:`, error.message);
-          // Continue with next chapter
+      resultsMap.set(book.usfm, {
+        bookData: {
+          id: book.usfm,
+          name: book.human,
+          local_name: book.human_long,
+          chapters: [],
+        },
+        chaptersMap: new Map(),
+      });
+    }
+    
+    // Concurrent download function
+    const downloadChapter = async ({ book, chapter }) => {
+      try {
+        const chapterContent = await this.getChapterContent(
+          versionId,
+          chapter.usfm,
+          abbr,
+          token
+        );
+        
+        if (chapterContent) {
+          const bookResult = resultsMap.get(book.usfm);
+          bookResult.chaptersMap.set(chapter.usfm, {
+            id: chapter.usfm,
+            chapter: parseInt(chapter.human),
+            verses: chapterContent.verses,
+          });
         }
+        
+        processedChapters++;
+        
+        if (onProgress) {
+          onProgress({
+            current: processedChapters,
+            total: totalChapters,
+            book: book.human,
+            chapter: chapter.human,
+            percentage: Math.round((processedChapters / totalChapters) * 100),
+          });
+        }
+        
+      } catch (error) {
+        console.error(`Error downloading ${chapter.usfm}:`, error.message);
+        processedChapters++;
+        // Continue with next chapter
+      }
+    };
+    
+    // Process chapters with concurrency limit
+    const queue = [...allChapters];
+    const executing = new Set();
+    
+    while (queue.length > 0 || executing.size > 0) {
+      // Fill up to concurrency limit
+      while (queue.length > 0 && executing.size < concurrency) {
+        const item = queue.shift();
+        const promise = downloadChapter(item).then(() => {
+          executing.delete(promise);
+        });
+        executing.add(promise);
       }
       
-      bibleData.books.push(bookData);
+      // Wait for at least one to complete
+      if (executing.size > 0) {
+        await Promise.race(executing);
+      }
+      
+      // Small delay to avoid rate limiting
+      await this.delay(20);
+    }
+    
+    // Assemble final data in correct order
+    for (const book of books) {
+      const bookResult = resultsMap.get(book.usfm);
+      // Sort chapters by their order in the original book
+      for (const chapter of (book.chapters || [])) {
+        const chapterData = bookResult.chaptersMap.get(chapter.usfm);
+        if (chapterData) {
+          bookResult.bookData.chapters.push(chapterData);
+        }
+      }
+      bibleData.books.push(bookResult.bookData);
     }
     
     return bibleData;

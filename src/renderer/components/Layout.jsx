@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { Button, Tooltip } from '@fluentui/react-components';
 import {
   Home24Regular,
   Home24Filled,
@@ -10,7 +11,12 @@ import {
   Settings24Regular,
   Settings24Filled,
   Book24Regular,
+  PanelLeft24Regular,
+  PanelLeftExpand24Regular,
+  WeatherMoon24Regular,
+  WeatherSunny24Regular,
 } from '@fluentui/react-icons';
+import { useTheme } from '../context/ThemeContext';
 
 const navItems = [
   { path: '/', label: 'Trang chủ', icon: Home24Regular, iconActive: Home24Filled },
@@ -21,14 +27,15 @@ const navItems = [
 
 function Layout({ children }) {
   const location = useLocation();
+  const { isDarkMode, toggleDarkMode, sidebarCollapsed, toggleSidebar } = useTheme();
 
   return (
-    <div className="app-container">
-      <aside className="sidebar">
+    <div className={`app-container ${isDarkMode ? 'dark' : ''}`}>
+      <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-header">
           <h1>
             <Book24Regular />
-            Bible Crawler
+            {!sidebarCollapsed && <span>Bible Crawler</span>}
           </h1>
         </div>
         <nav className="sidebar-nav">
@@ -37,17 +44,41 @@ function Layout({ children }) {
             const Icon = isActive ? item.iconActive : item.icon;
             
             return (
-              <NavLink
+              <Tooltip 
                 key={item.path}
-                to={item.path}
-                className={`nav-item ${isActive ? 'active' : ''}`}
+                content={sidebarCollapsed ? item.label : ''} 
+                relationship="label"
+                positioning="after"
               >
-                <Icon className="nav-item-icon" />
-                <span className="nav-item-text">{item.label}</span>
-              </NavLink>
+                <NavLink
+                  to={item.path}
+                  className={`nav-item ${isActive ? 'active' : ''}`}
+                >
+                  <Icon className="nav-item-icon" />
+                  {!sidebarCollapsed && <span className="nav-item-text">{item.label}</span>}
+                </NavLink>
+              </Tooltip>
             );
           })}
         </nav>
+        <div className="sidebar-footer">
+          <Tooltip content={isDarkMode ? 'Chế độ sáng' : 'Chế độ tối'} relationship="label">
+            <Button
+              appearance="subtle"
+              icon={isDarkMode ? <WeatherSunny24Regular /> : <WeatherMoon24Regular />}
+              onClick={toggleDarkMode}
+              className="sidebar-btn"
+            />
+          </Tooltip>
+          <Tooltip content={sidebarCollapsed ? 'Mở rộng' : 'Thu gọn'} relationship="label">
+            <Button
+              appearance="subtle"
+              icon={sidebarCollapsed ? <PanelLeftExpand24Regular /> : <PanelLeft24Regular />}
+              onClick={toggleSidebar}
+              className="sidebar-btn"
+            />
+          </Tooltip>
+        </div>
       </aside>
       <main className="main-content">
         {children}

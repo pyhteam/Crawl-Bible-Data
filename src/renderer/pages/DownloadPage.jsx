@@ -16,6 +16,8 @@ import {
   Radio,
   Tooltip,
   Badge,
+  Slider,
+  Label,
 } from '@fluentui/react-components';
 import {
   ArrowDownload24Regular,
@@ -23,6 +25,7 @@ import {
   MusicNote224Regular,
   Checkmark24Regular,
   Filter24Regular,
+  Delete24Regular,
 } from '@fluentui/react-icons';
 
 function DownloadPage() {
@@ -40,6 +43,11 @@ function DownloadPage() {
   const [exportFormat, setExportFormat] = useState('json');
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(null);
+  const [concurrency, setConcurrency] = useState(5);
+  
+  // Delete dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [versionToDelete, setVersionToDelete] = useState(null);
 
   useEffect(() => {
     loadInitialData();
@@ -122,6 +130,28 @@ function DownloadPage() {
     setDownloadModalOpen(true);
   };
 
+  const handleDeleteClick = (version) => {
+    setVersionToDelete(version);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!versionToDelete) return;
+    
+    try {
+      await window.electronAPI.deleteDownloadedBible(versionToDelete.abbreviation);
+      setDownloadedBibles(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(versionToDelete.abbreviation);
+        return newSet;
+      });
+      setDeleteDialogOpen(false);
+      setVersionToDelete(null);
+    } catch (error) {
+      console.error('Error deleting bible:', error);
+    }
+  };
+
   const handleDownload = async () => {
     if (!selectedVersion) return;
     
@@ -135,6 +165,7 @@ function DownloadPage() {
         versionId: selectedVersion.id,
         versionInfo: selectedVersion,
         token,
+        concurrency,
       });
       
       // Save to local
@@ -278,14 +309,26 @@ function DownloadPage() {
                         </Tooltip>
                       )}
                     </div>
-                    <Button
-                      appearance={isDownloaded ? 'secondary' : 'primary'}
-                      icon={isDownloaded ? <Checkmark24Regular /> : <ArrowDownload24Regular />}
-                      size="small"
-                      onClick={() => handleDownloadClick(version)}
-                    >
-                      {isDownloaded ? 'Tải lại' : 'Tải về'}
-                    </Button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <Button
+                        appearance={isDownloaded ? 'secondary' : 'primary'}
+                        icon={isDownloaded ? <Checkmark24Regular /> : <ArrowDownload24Regular />}
+                        size="small"
+                        onClick={() => handleDownloadClick(version)}
+                      >
+                        {isDownloaded ? 'Tải lại' : 'Tải về'}
+                      </Button>
+                      {isDownloaded && (
+                        <Tooltip content="Xóa" relationship="label">
+                          <Button
+                            appearance="subtle"
+                            icon={<Delete24Regular />}
+                            size="small"
+                            onClick={() => handleDeleteClick(version)}
+                          />
+                        </Tooltip>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -313,7 +356,7 @@ function DownloadPage() {
                       style={{ width: `${downloadProgress?.percentage || 0}%` }}
                     />
                   </div>
-                  <p style={{ fontSize: 12, color: '#605e5c', marginTop: 8 }}>
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 8 }}>
                     {downloadProgress?.percentage}% ({downloadProgress?.current}/{downloadProgress?.total} chương)
                   </p>
                 </div>
@@ -322,7 +365,24 @@ function DownloadPage() {
                   <p style={{ marginBottom: 16 }}>
                     <strong>{selectedVersion?.local_title || selectedVersion?.title}</strong>
                   </p>
-                  <p style={{ marginBottom: 16 }}>
+                  
+                  <div style={{ marginBottom: 16 }}>
+                    <Label style={{ display: 'block', marginBottom: 8 }}>
+                      Số luồng tải song song: {concurrency}
+                    </Label>
+                    <Slider
+                      min={1}
+                      max={10}
+                      value={concurrency}
+                      onChange={(e, data) => setConcurrency(data.value)}
+                      style={{ width: '100%' }}
+                    />
+                    <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
+                      Số luồng cao hơn sẽ tải nhanh hơn nhưng có thể bị chặn nếu quá nhiều request
+                    </p>
+                  </div>
+                  
+                  <p style={{ marginBottom: 8 }}>
                     Chọn định dạng file để lưu:
                   </p>
                   <RadioGroup value={exportFormat} onChange={(e, data) => setExportFormat(data.value)}>
@@ -349,6 +409,31 @@ function DownloadPage() {
                 disabled={downloading}
               >
                 {downloading ? 'Đang tải...' : 'Bắt đầu tải'}
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={(e, data) => setDeleteDialogOpen(data.open)}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Xác nhận xóa</DialogTitle>
+            <DialogContent>
+              <p>
+                Bạn có chắc chắn muốn xóa <strong>{versionToDelete?.abbreviation}</strong>?
+              </p>
+              <p style={{ color: 'var(--text-secondary)', marginTop: 8 }}>
+                Hành động này không thể hoàn tác. Bạn sẽ cần tải lại nếu muốn sử dụng phiên bản này.
+              </p>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => setDeleteDialogOpen(false)}>
+                Hủy
+              </Button>
+              <Button appearance="primary" onClick={handleDelete} style={{ backgroundColor: '#d13438' }}>
+                Xóa
               </Button>
             </DialogActions>
           </DialogBody>

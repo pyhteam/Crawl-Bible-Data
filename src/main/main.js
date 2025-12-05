@@ -97,7 +97,7 @@ ipcMain.handle('get-chapter-content', async (event, { versionId, usfm, abbreviat
 });
 
 // Download full bible
-ipcMain.handle('download-bible', async (event, { versionId, versionInfo, token, onProgress }) => {
+ipcMain.handle('download-bible', async (event, { versionId, versionInfo, token, concurrency = 5 }) => {
   try {
     const dataDir = path.join(app.getPath('userData'), 'data');
     if (!fs.existsSync(dataDir)) {
@@ -110,7 +110,8 @@ ipcMain.handle('download-bible', async (event, { versionId, versionInfo, token, 
       token,
       (progress) => {
         mainWindow.webContents.send('download-progress', progress);
-      }
+      },
+      concurrency
     );
     
     return bibleData;
