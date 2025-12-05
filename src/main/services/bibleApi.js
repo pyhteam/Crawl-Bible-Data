@@ -8,6 +8,15 @@ class BibleApiService {
     this.nextDataUrl = 'https://www.bible.com/_next/data';
     this.cachedToken = null;
     this.tokenExpiry = null;
+    this.isCancelled = false;
+  }
+
+  cancelDownload() {
+    this.isCancelled = true;
+  }
+
+  resetCancel() {
+    this.isCancelled = false;
   }
 
   // Helper method to make HTTPS GET requests
@@ -49,42 +58,44 @@ class BibleApiService {
     });
   }
 
-  // Fetch build token from Bible.com page
-  async fetchBuildToken() {
+  // Fetch build token from Bible.com page for a specific version
+  // Each version may have different token, so we fetch from the actual bible page
+  async fetchBuildToken(versionId = 1, abbreviation = 'KJV') {
     try {
-      // Check if cached token is still valid (cache for 1 hour)
-      if (this.cachedToken && this.tokenExpiry && Date.now() < this.tokenExpiry) {
-        return this.cachedToken;
-      }
-
-      console.log('Fetching new build token from Bible.com...');
-      const html = await this.httpGet('https://www.bible.com/bible/1/GEN.1.KJV', false);
+      // Build URL for first chapter of the version
+      const pageUrl = `https://www.bible.com/bible/${versionId}/GEN.1.${abbreviation}`;
+      console.log('Fetching build token from:', pageUrl);
+      
+      const html = await this.httpGet(pageUrl, false);
       
       // Look for buildId in the HTML (Next.js build ID)
-      // Pattern: "buildId":"fxAgRC8gE-rJH0I7i37xV"
+      // Pattern: "buildId":"rWH85fiNVJ7L9K85GEf0o"
       const tokenMatch = html.match(/"buildId"\s*:\s*"([a-zA-Z0-9_-]+)"/);
       if (tokenMatch && tokenMatch[1]) {
-        this.cachedToken = tokenMatch[1];
-        this.tokenExpiry = Date.now() + 3600000; // Cache for 1 hour
-        console.log('Got new token:', this.cachedToken);
-        return this.cachedToken;
+        console.log('Got build token:', tokenMatch[1]);
+        return tokenMatch[1];
       }
       
       // Try alternative pattern: _next/data/{token}/ 
       const altMatch = html.match(/_next\/data\/([a-zA-Z0-9_-]+)\//);
       if (altMatch && altMatch[1]) {
-        this.cachedToken = altMatch[1];
-        this.tokenExpiry = Date.now() + 3600000;
-        console.log('Got new token (alt):', this.cachedToken);
-        return this.cachedToken;
+        console.log('Got build token (alt):', altMatch[1]);
+        return altMatch[1];
       }
       
-      // Fallback to default token
-      console.log('Could not extract token, using default');
-      return 'fxAgRC8gE-rJH0I7i37xV';
+      // Fallback: try generic page
+      console.log('Could not extract token from version page, trying generic...');
+      const genericHtml = await this.httpGet('https://www.bible.com/bible/1/GEN.1.KJV', false);
+      const genericMatch = genericHtml.match(/"buildId"\s*:\s*"([a-zA-Z0-9_-]+)"/);
+      if (genericMatch && genericMatch[1]) {
+        console.log('Got generic token:', genericMatch[1]);
+        return genericMatch[1];
+      }
+      
+      throw new Error('Could not extract build token');
     } catch (error) {
       console.error('Error fetching build token:', error);
-      return 'fxAgRC8gE-rJH0I7i37xV';
+      throw error;
     }
   }
 
@@ -195,7 +206,7 @@ class BibleApiService {
 
   parseVerses(htmlContent) {
     const $ = cheerio.load(htmlContent);
-    const verses = [];
+    const versesMap = new Map(); // Use map to merge verses with same id
     
     $('span.verse').each((index, element) => {
       const $verse = $(element);
@@ -208,27 +219,31 @@ class BibleApiService {
           content += $(contentEl).text();
         });
         
-        // Also include italic text
-        $verse.find('span.it span.content').each((i, itEl) => {
-          // Already included above, but ensure formatting
-        });
-        
         // Decode HTML entities
         content = he.decode(content.trim());
         
         // Extract verse number from usfm (e.g., "GEN.1.1" -> "1")
         const parts = usfm.split('.');
-        const verseNum = parts[parts.length - 1];
+        const verseNum = parseInt(parts[parts.length - 1]);
         
         if (content) {
-          verses.push({
-            id: usfm,
-            verse: parseInt(verseNum),
-            content: content,
-          });
+          // If verse already exists, append content (for poetry/multi-line verses)
+          if (versesMap.has(usfm)) {
+            const existing = versesMap.get(usfm);
+            existing.content += ' ' + content;
+          } else {
+            versesMap.set(usfm, {
+              id: usfm,
+              verse: verseNum,
+              content: content,
+            });
+          }
         }
       }
     });
+    
+    // Convert map to array and sort by verse number
+    const verses = Array.from(versesMap.values()).sort((a, b) => a.verse - b.verse);
     
     return verses;
   }
@@ -236,15 +251,21 @@ class BibleApiService {
   async downloadFullBible(versionId, versionInfo, token, onProgress, concurrency = 5) {
     console.log('Starting download for version:', versionId);
     console.log('Version info:', JSON.stringify(versionInfo, null, 2));
-    console.log('Token:', token);
     console.log('Concurrency:', concurrency);
     
     const { books } = await this.getBooksByVersion(versionId);
     console.log('Got books:', books.length);
     
+    const abbr = versionInfo.abbreviation || versionInfo.local_abbreviation;
+    
+    // Fetch fresh token for this specific version
+    console.log('Fetching fresh token for version:', versionId, abbr);
+    const freshToken = await this.fetchBuildToken(versionId, abbr);
+    console.log('Using fresh token:', freshToken);
+    
     const bibleData = {
       id: versionInfo.id,
-      abbreviation: versionInfo.abbreviation || versionInfo.local_abbreviation,
+      abbreviation: abbr,
       title: versionInfo.title,
       local_title: versionInfo.local_title,
       language: versionInfo.language,
@@ -266,7 +287,6 @@ class BibleApiService {
     
     const totalChapters = allChapters.length;
     let processedChapters = 0;
-    const abbr = versionInfo.abbreviation || versionInfo.local_abbreviation;
     console.log('Using abbreviation:', abbr);
     console.log('Total chapters to download:', totalChapters);
     
@@ -291,7 +311,7 @@ class BibleApiService {
           versionId,
           chapter.usfm,
           abbr,
-          token
+          freshToken
         );
         
         if (chapterContent) {
@@ -325,8 +345,15 @@ class BibleApiService {
     // Process chapters with concurrency limit
     const queue = [...allChapters];
     const executing = new Set();
+    this.resetCancel(); // Reset cancel flag at start
     
     while (queue.length > 0 || executing.size > 0) {
+      // Check if cancelled
+      if (this.isCancelled) {
+        console.log('Download cancelled by user');
+        throw new Error('DOWNLOAD_CANCELLED');
+      }
+      
       // Fill up to concurrency limit
       while (queue.length > 0 && executing.size < concurrency) {
         const item = queue.shift();

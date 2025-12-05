@@ -187,8 +187,22 @@ function DownloadPage() {
       
     } catch (error) {
       console.error('Error downloading bible:', error);
+      if (error.message !== 'DOWNLOAD_CANCELLED') {
+        // Show error to user if not cancelled
+      }
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const handleCancelDownload = async () => {
+    try {
+      await window.electronAPI.cancelDownload();
+      setDownloading(false);
+      setDownloadProgress(null);
+      setDownloadModalOpen(false);
+    } catch (error) {
+      console.error('Error cancelling download:', error);
     }
   };
 
@@ -396,20 +410,30 @@ function DownloadPage() {
               )}
             </DialogContent>
             <DialogActions>
-              <Button 
-                appearance="secondary" 
-                onClick={() => setDownloadModalOpen(false)}
-                disabled={downloading}
-              >
-                Hủy
-              </Button>
-              <Button 
-                appearance="primary" 
-                onClick={handleDownload}
-                disabled={downloading}
-              >
-                {downloading ? 'Đang tải...' : 'Bắt đầu tải'}
-              </Button>
+              {downloading ? (
+                <Button 
+                  appearance="secondary" 
+                  onClick={handleCancelDownload}
+                  style={{ backgroundColor: '#d13438', color: 'white' }}
+                >
+                  Hủy tải
+                </Button>
+              ) : (
+                <>
+                  <Button 
+                    appearance="secondary" 
+                    onClick={() => setDownloadModalOpen(false)}
+                  >
+                    Hủy
+                  </Button>
+                  <Button 
+                    appearance="primary" 
+                    onClick={handleDownload}
+                  >
+                    Bắt đầu tải
+                  </Button>
+                </>
+              )}
             </DialogActions>
           </DialogBody>
         </DialogSurface>

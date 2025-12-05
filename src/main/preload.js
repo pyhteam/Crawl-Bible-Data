@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Download
   downloadBible: (params) => ipcRenderer.invoke('download-bible', params),
+  cancelDownload: () => ipcRenderer.invoke('cancel-download'),
   onDownloadProgress: (callback) => ipcRenderer.on('download-progress', (event, progress) => callback(progress)),
   removeDownloadProgressListener: () => ipcRenderer.removeAllListeners('download-progress'),
   

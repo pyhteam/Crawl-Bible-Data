@@ -121,6 +121,17 @@ ipcMain.handle('download-bible', async (event, { versionId, versionInfo, token, 
   }
 });
 
+// Cancel download
+ipcMain.handle('cancel-download', async () => {
+  try {
+    bibleApi.cancelDownload();
+    return true;
+  } catch (error) {
+    console.error('Error cancelling download:', error);
+    throw error;
+  }
+});
+
 // Export bible data
 ipcMain.handle('export-bible', async (event, { bibleData, format }) => {
   try {

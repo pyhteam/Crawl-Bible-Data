@@ -274,7 +274,7 @@ function ReaderPage() {
         </div>
         
         {/* Verses Content */}
-        <div className="reader-content" style={{ fontSize }}>
+        <div className="reader-content" style={{ fontSize }} key={`${selectedBook?.id}-${selectedChapter?.chapter}`}>
           {selectedChapter ? (
             <>
               <h2 style={{ 
@@ -287,8 +287,8 @@ function ReaderPage() {
                 {selectedBook?.local_name || selectedBook?.name} - Chương {selectedChapter.chapter}
               </h2>
               
-              {selectedChapter.verses?.map((verse) => (
-                <div key={verse.id} className="verse">
+              {selectedChapter.verses?.map((verse, index) => (
+                <div key={`${selectedChapter.chapter}-${verse.id}-${index}`} className="verse">
                   <sup className="verse-number">{verse.verse}</sup>
                   <span className="verse-content" style={{ fontSize }}>
                     {verse.content}
