@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <rect width="256" height="256" rx="32" fill="#0078d4"/>
+  <g transform="translate(48, 40)">
+    <rect x="20" y="0" width="120" height="176" rx="8" fill="#ffffff"/>
+    <rect x="28" y="12" width="104" height="4" rx="2" fill="#0078d4"/>
+    <rect x="28" y="24" width="80" height="4" rx="2" fill="#a0a0a0"/>
+    <rect x="28" y="36" width="104" height="4" rx="2" fill="#a0a0a0"/>
+    <rect x="28" y="48" width="90" height="4" rx="2" fill="#a0a0a0"/>
+    <rect x="28" y="60" width="104" height="4" rx="2" fill="#a0a0a0"/>
+    <rect x="28" y="72" width="70" height="4" rx="2" fill="#a0a0a0"/>
+    <rect x="28" y="88" width="104" height="4" rx="2" fill="#0078d4"/>
+    <rect x="28" y="100" width="95" height="4" rx="2" fill="#a0a0a0"/>
+    <rect x="28" y="112" width="104" height="4" rx="2" fill="#a0a0a0"/>
+    <rect x="28" y="124" width="85" height="4" rx="2" fill="#a0a0a0"/>
+    <rect x="28" y="136" width="104" height="4" rx="2" fill="#a0a0a0"/>
+    <rect x="28" y="148" width="60" height="4" rx="2" fill="#a0a0a0"/>
+    <path d="M0 16 L20 0 L20 176 L0 160 Z" fill="#005a9e"/>
+  </g>
+</svg>

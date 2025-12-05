@@ -1,0 +1,401 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
+}
+
+body {
+  overflow: hidden;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* Layout */
+.app-container {
+  display: flex;
+  height: 100vh;
+  background-color: #faf9f8;
+}
+
+.sidebar {
+  width: 280px;
+  background-color: #f3f2f1;
+  border-right: 1px solid #edebe9;
+  display: flex;
+  flex-direction: column;
+  -webkit-app-region: drag;
+}
+
+.sidebar-header {
+  padding: 20px;
+  border-bottom: 1px solid #edebe9;
+}
+
+.sidebar-header h1 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #323130;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 12px;
+  -webkit-app-region: no-drag;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #323130;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+  margin-bottom: 4px;
+}
+
+.nav-item:hover {
+  background-color: #e1dfdd;
+}
+
+.nav-item.active {
+  background-color: #0078d4;
+  color: white;
+}
+
+.nav-item-icon {
+  font-size: 20px;
+}
+
+.nav-item-text {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.page-header {
+  padding: 24px 32px;
+  background-color: white;
+  border-bottom: 1px solid #edebe9;
+  -webkit-app-region: drag;
+}
+
+.page-header h2 {
+  font-size: 28px;
+  font-weight: 600;
+  color: #323130;
+}
+
+.page-header p {
+  color: #605e5c;
+  margin-top: 4px;
+}
+
+.page-content {
+  flex: 1;
+  padding: 24px 32px;
+  overflow-y: auto;
+}
+
+/* Cards */
+.card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1.6px 3.6px 0 rgba(0, 0, 0, 0.132), 0 0.3px 0.9px 0 rgba(0, 0, 0, 0.108);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #323130;
+}
+
+/* Grid */
+.grid {
+  display: grid;
+  gap: 16px;
+}
+
+.grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.grid-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 1200px) {
+  .grid-4 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .grid-3, .grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Bible version card */
+.bible-card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1.6px 3.6px 0 rgba(0, 0, 0, 0.132);
+  padding: 16px;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  cursor: pointer;
+}
+
+.bible-card:hover {
+  box-shadow: 0 3.2px 7.2px 0 rgba(0, 0, 0, 0.132), 0 0.6px 1.8px 0 rgba(0, 0, 0, 0.108);
+  transform: translateY(-2px);
+}
+
+.bible-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #323130;
+  margin-bottom: 4px;
+}
+
+.bible-card-subtitle {
+  font-size: 12px;
+  color: #605e5c;
+  margin-bottom: 8px;
+}
+
+.bible-card-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.badge-downloaded {
+  background-color: #dff6dd;
+  color: #107c10;
+}
+
+.badge-audio {
+  background-color: #deecf9;
+  color: #0078d4;
+}
+
+/* Reader styles */
+.reader-container {
+  display: flex;
+  height: 100%;
+}
+
+.reader-sidebar {
+  width: 280px;
+  background: white;
+  border-right: 1px solid #edebe9;
+  display: flex;
+  flex-direction: column;
+}
+
+.reader-content {
+  flex: 1;
+  padding: 32px;
+  overflow-y: auto;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.verse {
+  margin-bottom: 8px;
+  line-height: 1.8;
+}
+
+.verse-number {
+  font-size: 11px;
+  font-weight: 600;
+  color: #0078d4;
+  vertical-align: super;
+  margin-right: 4px;
+}
+
+.verse-content {
+  font-size: 18px;
+  color: #323130;
+}
+
+/* Filters */
+.filters-container {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 200px;
+}
+
+.filter-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #605e5c;
+}
+
+/* Progress */
+.progress-container {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 1.6px 3.6px 0 rgba(0, 0, 0, 0.132);
+}
+
+.progress-text {
+  font-size: 14px;
+  color: #323130;
+  margin-bottom: 8px;
+}
+
+.progress-bar-container {
+  height: 8px;
+  background: #edebe9;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #0078d4, #00bcf2);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 48px;
+  color: #605e5c;
+}
+
+.empty-state-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-state-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #323130;
+  margin-bottom: 8px;
+}
+
+.empty-state-text {
+  font-size: 14px;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+/* Loading */
+.loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 25.6px 57.6px 0 rgba(0, 0, 0, 0.22);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.modal-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #323130;
+}
+
+.modal-body {
+  margin-bottom: 20px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
