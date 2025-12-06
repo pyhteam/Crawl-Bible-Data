@@ -29,7 +29,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   isBibleDownloaded: (abbreviation) => ipcRenderer.invoke('is-bible-downloaded', abbreviation),
   deleteDownloadedBible: (abbreviation) => ipcRenderer.invoke('delete-downloaded-bible', abbreviation),
   
-  // Token
-  getToken: () => ipcRenderer.invoke('get-token'),
-  setToken: (token) => ipcRenderer.invoke('set-token', token),
+
 });

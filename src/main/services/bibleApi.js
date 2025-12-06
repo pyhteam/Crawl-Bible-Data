@@ -5,9 +5,6 @@ const he = require('he');
 class BibleApiService {
   constructor() {
     this.baseUrl = 'https://www.bible.com/api/bible';
-    this.nextDataUrl = 'https://www.bible.com/_next/data';
-    this.cachedToken = null;
-    this.tokenExpiry = null;
     this.isCancelled = false;
   }
 
@@ -56,47 +53,6 @@ class BibleApiService {
       req.on('error', reject);
       req.end();
     });
-  }
-
-  // Fetch build token from Bible.com page for a specific version
-  // Each version may have different token, so we fetch from the actual bible page
-  async fetchBuildToken(versionId = 1, abbreviation = 'KJV') {
-    try {
-      // Build URL for first chapter of the version
-      const pageUrl = `https://www.bible.com/bible/${versionId}/GEN.1.${abbreviation}`;
-      console.log('Fetching build token from:', pageUrl);
-      
-      const html = await this.httpGet(pageUrl, false);
-      
-      // Look for buildId in the HTML (Next.js build ID)
-      // Pattern: "buildId":"rWH85fiNVJ7L9K85GEf0o"
-      const tokenMatch = html.match(/"buildId"\s*:\s*"([a-zA-Z0-9_-]+)"/);
-      if (tokenMatch && tokenMatch[1]) {
-        console.log('Got build token:', tokenMatch[1]);
-        return tokenMatch[1];
-      }
-      
-      // Try alternative pattern: _next/data/{token}/ 
-      const altMatch = html.match(/_next\/data\/([a-zA-Z0-9_-]+)\//);
-      if (altMatch && altMatch[1]) {
-        console.log('Got build token (alt):', altMatch[1]);
-        return altMatch[1];
-      }
-      
-      // Fallback: try generic page
-      console.log('Could not extract token from version page, trying generic...');
-      const genericHtml = await this.httpGet('https://www.bible.com/bible/1/GEN.1.KJV', false);
-      const genericMatch = genericHtml.match(/"buildId"\s*:\s*"([a-zA-Z0-9_-]+)"/);
-      if (genericMatch && genericMatch[1]) {
-        console.log('Got generic token:', genericMatch[1]);
-        return genericMatch[1];
-      }
-      
-      throw new Error('Could not extract build token');
-    } catch (error) {
-      console.error('Error fetching build token:', error);
-      throw error;
-    }
   }
 
   async getLanguages() {
@@ -176,13 +132,33 @@ class BibleApiService {
     }
   }
 
-  async getChapterContent(versionId, usfm, abbreviation, token) {
+  // Fetch chapter content by scraping the HTML page and extracting __NEXT_DATA__
+  // This is more reliable than the _next/data API which may return 404
+  async getChapterContent(versionId, usfm, abbreviation) {
     try {
-      const url = `${this.nextDataUrl}/${token}/en/bible/${versionId}/${usfm}.${abbreviation}.json?versionId=${versionId}&usfm=${encodeURIComponent(`${usfm}.${abbreviation}`)}`;
+      // Build the direct page URL
+      const pageUrl = `https://www.bible.com/bible/${versionId}/${usfm}.${abbreviation}`;
       
-      const response = await this.httpGet(url);
+      // Fetch the HTML page
+      const html = await this.httpGet(pageUrl, false);
       
-      const pageProps = response.pageProps;
+      // Extract __NEXT_DATA__ JSON from the HTML
+      const nextDataMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">(.+?)<\/script>/s);
+      
+      if (!nextDataMatch || !nextDataMatch[1]) {
+        console.error('Could not find __NEXT_DATA__ in page:', pageUrl);
+        return null;
+      }
+      
+      let pageData;
+      try {
+        pageData = JSON.parse(nextDataMatch[1]);
+      } catch (e) {
+        console.error('Failed to parse __NEXT_DATA__ JSON:', e.message);
+        return null;
+      }
+      
+      const pageProps = pageData?.props?.pageProps;
       
       if (pageProps && pageProps.chapterInfo) {
         const content = pageProps.chapterInfo.content;
@@ -248,7 +224,7 @@ class BibleApiService {
     return verses;
   }
 
-  async downloadFullBible(versionId, versionInfo, token, onProgress, concurrency = 5) {
+  async downloadFullBible(versionId, versionInfo, onProgress, concurrency = 5) {
     console.log('Starting download for version:', versionId);
     console.log('Version info:', JSON.stringify(versionInfo, null, 2));
     console.log('Concurrency:', concurrency);
@@ -257,11 +233,7 @@ class BibleApiService {
     console.log('Got books:', books.length);
     
     const abbr = versionInfo.abbreviation || versionInfo.local_abbreviation;
-    
-    // Fetch fresh token for this specific version
-    console.log('Fetching fresh token for version:', versionId, abbr);
-    const freshToken = await this.fetchBuildToken(versionId, abbr);
-    console.log('Using fresh token:', freshToken);
+    console.log('Using abbreviation:', abbr);
     
     const bibleData = {
       id: versionInfo.id,
@@ -287,7 +259,6 @@ class BibleApiService {
     
     const totalChapters = allChapters.length;
     let processedChapters = 0;
-    console.log('Using abbreviation:', abbr);
     console.log('Total chapters to download:', totalChapters);
     
     // Results map: bookUsfm -> { bookData, chapters: Map<chapterUsfm, chapterData> }
@@ -307,11 +278,11 @@ class BibleApiService {
     // Concurrent download function
     const downloadChapter = async ({ book, chapter }) => {
       try {
+        // Now using simplified getChapterContent without token/apiPath
         const chapterContent = await this.getChapterContent(
           versionId,
           chapter.usfm,
-          abbr,
-          freshToken
+          abbr
         );
         
         if (chapterContent) {
@@ -369,7 +340,7 @@ class BibleApiService {
       }
       
       // Small delay to avoid rate limiting
-      await this.delay(20);
+      await this.delay(50);
     }
     
     // Assemble final data in correct order

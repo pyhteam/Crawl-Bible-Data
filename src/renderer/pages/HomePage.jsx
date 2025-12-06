@@ -99,12 +99,9 @@ function HomePage() {
       setDownloading(true);
       setDownloadProgress({ percentage: 0, book: '', chapter: '' });
       
-      const token = await window.electronAPI.getToken();
-      
       const bibleData = await window.electronAPI.downloadBible({
         versionId: selectedVersion.id,
         versionInfo: selectedVersion,
-        token,
       });
       
       // Save to local

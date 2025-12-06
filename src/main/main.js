@@ -87,9 +87,9 @@ ipcMain.handle('get-books-by-version', async (event, versionId) => {
 });
 
 // Get chapter content
-ipcMain.handle('get-chapter-content', async (event, { versionId, usfm, abbreviation, token }) => {
+ipcMain.handle('get-chapter-content', async (event, { versionId, usfm, abbreviation }) => {
   try {
-    return await bibleApi.getChapterContent(versionId, usfm, abbreviation, token);
+    return await bibleApi.getChapterContent(versionId, usfm, abbreviation);
   } catch (error) {
     console.error('Error getting chapter content:', error);
     throw error;
@@ -97,7 +97,7 @@ ipcMain.handle('get-chapter-content', async (event, { versionId, usfm, abbreviat
 });
 
 // Download full bible
-ipcMain.handle('download-bible', async (event, { versionId, versionInfo, token, concurrency = 5 }) => {
+ipcMain.handle('download-bible', async (event, { versionId, versionInfo, concurrency = 5 }) => {
   try {
     const dataDir = path.join(app.getPath('userData'), 'data');
     if (!fs.existsSync(dataDir)) {
@@ -106,8 +106,7 @@ ipcMain.handle('download-bible', async (event, { versionId, versionInfo, token, 
     
     const bibleData = await bibleApi.downloadFullBible(
       versionId, 
-      versionInfo, 
-      token,
+      versionInfo,
       (progress) => {
         mainWindow.webContents.send('download-progress', progress);
       },
@@ -213,21 +212,7 @@ ipcMain.handle('save-bible-local', async (event, bibleData) => {
   }
 });
 
-// Get/Set token - now fetches automatically from Bible.com
-ipcMain.handle('get-token', async () => {
-  try {
-    const token = await bibleApi.fetchBuildToken();
-    return token;
-  } catch (error) {
-    console.error('Error fetching token:', error);
-    return store.get('token', 'fxAgRC8gE-rJH0I7i37xV');
-  }
-});
 
-ipcMain.handle('set-token', (event, token) => {
-  store.set('token', token);
-  return true;
-});
 
 // Check if bible is downloaded
 ipcMain.handle('is-bible-downloaded', async (event, abbreviation) => {
